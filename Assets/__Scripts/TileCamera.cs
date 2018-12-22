@@ -13,7 +13,6 @@ public class TileSwap
 
 public class TileCamera : MonoBehaviour
 {
-
     static private int W, H;
     static private int[,] MAP;
     static public Sprite[] SPRITES;
@@ -21,10 +20,10 @@ public class TileCamera : MonoBehaviour
     static public Tile[,] TILES;
     static public string COLLISIONS;
 
-    [Header("Set in Inspector")]
+    [Header("Set In Inspector")]
     public TextAsset mapData;
     public Texture2D mapTiles;
-    public TextAsset mapCollisions;
+    public TextAsset mapCollisions; // This will be used later
     public Tile tilePrefab;
     public int defaultTileNum;
     public List<TileSwap> tileSwaps;
@@ -42,17 +41,22 @@ public class TileCamera : MonoBehaviour
 
     public void LoadMap()
     {
+        // Create the TILE_ANCHOR. All Tiles will have this as their parent.
         GameObject go = new GameObject("TILE_ANCHOR");
         TILE_ANCHOR = go.transform;
+        // Load all of the Sprites from mapTiles
         SPRITES = Resources.LoadAll<Sprite>(mapTiles.name);
+
+        // Read in the map data
         string[] lines = mapData.text.Split('\n');
         H = lines.Length;
         string[] tileNums = lines[0].Split(' ');
         W = tileNums.Length;
+
         System.Globalization.NumberStyles hexNum;
         hexNum = System.Globalization.NumberStyles.HexNumber;
+        // Place the map data into a 2D Array for faster access
         MAP = new int[W, H];
-
         for (int j = 0; j < H; j++)
         {
             tileNums = lines[j].Split(' ');
@@ -69,16 +73,20 @@ public class TileCamera : MonoBehaviour
                 CheckTileSwaps(i, j);
             }
         }
-
         print("Parsed " + SPRITES.Length + " sprites.");
-        print("Map size: " + W + " wide by " + H + " high");
+        print("Map size: " + W + " wide by " + H + " high.");
+
         ShowMap();
     }
 
+    /// <summary>
+    /// Generates Tiles for the entire map all at once.
+    /// </summary>
     void ShowMap()
     {
         TILES = new Tile[W, H];
 
+        // Run through the entire map and instantiate Tiles where necessary
         for (int j = 0; j < H; j++)
         {
             for (int i = 0; i < W; i++)
@@ -95,42 +103,34 @@ public class TileCamera : MonoBehaviour
     }
 
     void PrepareTileSwapDict()
-    {                                             // d
-
+    {
         tileSwapDict = new Dictionary<int, TileSwap>();
-
         foreach (TileSwap ts in tileSwaps)
         {
-
             tileSwapDict.Add(ts.tileNum, ts);
-
         }
-
     }
-
-
 
     void CheckTileSwaps(int i, int j)
     {
         int tNum = GET_MAP(i, j);
         if (!tileSwapDict.ContainsKey(tNum)) return;
-        TileSwap ts = tileSwapDict[tNum];
 
+        // We do need to swap a tile
+        TileSwap ts = tileSwapDict[tNum];
         if (ts.swapPrefab != null)
         {
             GameObject go = Instantiate(ts.swapPrefab);
             Enemy e = go.GetComponent<Enemy>();
-
             if (e != null)
             {
-                go.transform.SetParent(enemyAnchor);
+                e.transform.SetParent(enemyAnchor);
             }
             else
             {
                 go.transform.SetParent(itemAnchor);
             }
             go.transform.position = new Vector3(i, j, 0);
-
             if (ts.guaranteedItemDrop != null)
             {
                 if (e != null)
@@ -138,15 +138,15 @@ public class TileCamera : MonoBehaviour
                     e.guaranteedItemDrop = ts.guaranteedItemDrop;
                 }
             }
-        }
-
-        if (ts.overrideTileNum == -1)
-        {
-            SET_MAP(i, j, defaultTileNum);
-        }
-        else
-        {
-            SET_MAP(i, j, ts.overrideTileNum);
+            // Replace it with another tile
+            if (ts.overrideTileNum == -1)
+            {
+                SET_MAP(i, j, defaultTileNum);
+            }
+            else
+            {
+                SET_MAP(i, j, ts.overrideTileNum);
+            }
         }
     }
 
@@ -154,13 +154,13 @@ public class TileCamera : MonoBehaviour
     {
         if (x < 0 || x >= W || y < 0 || y >= H)
         {
-            return -1;
+            return -1;  // Do not allow IndexOutOfRangeExceptions
         }
         return MAP[x, y];
     }
 
     static public int GET_MAP(float x, float y)
-    {
+    {   // A float GET_MAP() overload
         int tX = Mathf.RoundToInt(x);
         int tY = Mathf.RoundToInt(y - 0.25f);
         return GET_MAP(tX, tY);
@@ -168,9 +168,10 @@ public class TileCamera : MonoBehaviour
 
     static public void SET_MAP(int x, int y, int tNum)
     {
+        // Additional security or a break point could be set here.
         if (x < 0 || x >= W || y < 0 || y >= H)
         {
-            return;
+            return; // Do not allow IndexOutOfRangeExceptions
         }
         MAP[x, y] = tNum;
     }
